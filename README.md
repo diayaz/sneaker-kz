@@ -60,6 +60,28 @@ python manage.py scrape bodega_us            # один
 
 Логи — в `backend/logs/scrape_<дата>.log`, итоги запусков — в таблице `scrape_runs` (`python manage.py stats`).
 
+## API
+
+```bash
+cd backend
+.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
+```
+
+Документация: http://localhost:8000/docs. Все маршруты под `/api/v1` — их же будут использовать мобильные приложения.
+
+| Маршрут | Что отдаёт |
+|---|---|
+| `GET /products` | поиск и каталог: `q`, `brand`, `size`, `gender`, `min_price`/`max_price` ($), `on_sale`, `in_stock`, `store`, `sort` (`popular`, `price_asc`, `price_desc`, `discount`, `new`), `page`, `page_size` |
+| `GET /products/{id}` | карточка: предложения всех магазинов с размерами и расчётом «до двери» |
+| `GET /products/{id}/history?days=90` | история цен по магазинам |
+| `GET /filters` | бренды, размеры, диапазон цен для фильтров |
+| `GET /stores` | магазины |
+| `GET /estimate-info` | курсы и параметры расчёта + текст оговорки |
+
+**Расчёт «до двери»** ([app/pricing.py](backend/app/pricing.py)): (цена + налог штата + доставка
+посредника) × курс USD + пошлина × курс EUR. Пошлина — 15% с превышения €200 на посылку
+(€2/кг сверх 31 кг, если больше). Все параметры — в таблице `settings`.
+
 ## Ежедневное обновление
 
 `python manage.py daily` — курсы USD/EUR с RSS Нацбанка РК, затем все парсеры. Падение одного

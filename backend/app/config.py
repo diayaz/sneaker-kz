@@ -10,6 +10,7 @@ class Config(BaseSettings):
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'data' / 'sneakers.db').as_posix()}"
     log_dir: Path = BACKEND_DIR / "logs"
+    cors_origins: list[str] = ["http://localhost:3000"]  # адрес фронтенда
 
 
 config = Config()
