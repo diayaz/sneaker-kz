@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7f5;
+  --surface: #ffffff;
+  --foreground: #16181d;
+  --muted: #6b7078;
+  --border: #e4e4e0;
+  --accent: #0f766e;
+  --accent-soft: #e6f4f2;
+  --sale: #c2410c;
+  --on-accent: #ffffff; /* текст на заливке accent/sale */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-sale: var(--sale);
+  --color-on-accent: var(--on-accent);
+  --font-sans: var(--font-inter);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1115;
+    --surface: #171a20;
+    --foreground: #eceef1;
+    --muted: #9aa0a8;
+    --border: #2a2f37;
+    --accent: #2dd4bf;
+    --accent-soft: #11302d;
+    --sale: #fb923c;
+    --on-accent: #0f1115; /* на светлых акцентах тёмной темы белый текст плохо читается */
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

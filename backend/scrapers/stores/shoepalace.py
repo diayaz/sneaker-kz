@@ -34,12 +34,16 @@ class ShoePalaceScraper(ShopifyScraper):
     def style_code(self, p: Product) -> str | None:
         return self._tag_value(p, "STYLE_") or self._tag_value(p, "SKU_")
 
+    def _title(self, p: Product) -> str:
+        # Приписки после цвета: «(Black/White) Final Sale»
+        return re.sub(r"\s+(Final Sale|Limit \d+.*)$", "", p.get("title") or "", flags=re.I).strip()
+
     def color(self, p: Product) -> str | None:
         # «... Mens Lifestyle Shoes (Black/Varsity Red/Summit White)»
-        m = re.search(r"\(([^()]+)\)\s*$", p.get("title") or "")
+        m = re.search(r"\(([^()]+)\)\s*$", self._title(p))
         return m.group(1).strip() if m else None
 
     def name(self, p: Product) -> str:
-        title = re.sub(r"\s*\([^()]+\)\s*$", "", p.get("title") or "")
+        title = re.sub(r"\s*\([^()]+\)\s*$", "", self._title(p))
         # убираем хвост «Mens Lifestyle Shoes» / «Womens Running Shoes»
         return re.sub(r"\s+(Mens|Womens|Unisex)\s+.*Shoes$", "", title).strip()

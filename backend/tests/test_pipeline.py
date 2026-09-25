@@ -63,6 +63,21 @@ def test_same_style_code_from_two_stores_is_one_product(session_factory):
         assert s.query(Offer).count() == 2
 
 
+def test_source_store_updates_name_other_store_does_not(session_factory):
+    def named(name):
+        it = make_item("IQ6573-100", "100")
+        it.name = name
+        return it
+
+    pipeline.run_scraper(fake_scraper("a", [named("Old Name")]), session_factory)
+    pipeline.run_scraper(fake_scraper("b", [named("Name From B")]), session_factory)
+    with session_factory() as s:
+        assert s.scalar(select(Product.name)) == "Old Name"
+    pipeline.run_scraper(fake_scraper("a", [named("Fixed Name")]), session_factory)
+    with session_factory() as s:
+        assert s.scalar(select(Product.name)) == "Fixed Name"
+
+
 def test_short_codes_not_matched_across_stores(session_factory):
     pipeline.run_scraper(fake_scraper("a", [make_item("V03", "100")]), session_factory)
     pipeline.run_scraper(fake_scraper("b", [make_item("V03", "100")]), session_factory)

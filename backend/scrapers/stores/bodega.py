@@ -1,5 +1,5 @@
 from scrapers.base import StoreInfo
-from scrapers.shopify import Product, ShopifyScraper
+from scrapers.shopify import Product, ShopifyScraper, smart_title
 
 
 class BodegaScraper(ShopifyScraper):
@@ -17,4 +17,4 @@ class BodegaScraper(ShopifyScraper):
         return "sneakers" in {t.lower() for t in p.get("tags") or []}
 
     def name(self, p: Product) -> str:
-        return (p.get("title") or "").replace('"', "").strip().title()
+        return smart_title((p.get("title") or "").replace('"', "").strip())

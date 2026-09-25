@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from scrapers.base import get_registry
-from scrapers.shopify import normalize_brand
+from scrapers.shopify import normalize_brand, smart_title
 from scrapers.stores.bodega import BodegaScraper
 from scrapers.stores.shoepalace import ShoePalaceScraper
 from scrapers.stores.sneakerpolitics import SneakerPoliticsScraper
@@ -108,6 +108,25 @@ def test_price_prefers_available_sizes():
         variant("9", "A1|9", "100.00"),
     ])
     assert SneakerPoliticsScraper().parse(p).price == Decimal("100.00")
+
+
+def test_shoepalace_final_sale_suffix():
+    tags = ["Category_Footwear", "Product_Shoes", "Department_Men", "STYLE_HM1234-100"]
+    p = product("Air Pegasus Wave Mens Running Shoes (Sundial/University Blue) Final Sale", "NIKE", "RUNNING", tags,
+                [variant("9", "1", "59.98", compare="160.00")])
+    item = ShoePalaceScraper().parse(p)
+    assert (item.name, item.color) == ("Air Pegasus Wave", "Sundial/University Blue")
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("AIR JORDAN 1 LOW OG", "Air Jordan 1 Low OG"),
+    ("NIKE AIR FORCE 1 '07 LX", "Nike Air Force 1 '07 LX"),
+    ("NEW BALANCE 1906R", "New Balance 1906R"),
+    ("WHITE/GOLD/RED", "White/Gold/Red"),
+    ("Samba OG", "Samba OG"),  # смешанный регистр не трогаем
+])
+def test_smart_title(raw, expected):
+    assert smart_title(raw) == expected
 
 
 def test_brand_aliases():

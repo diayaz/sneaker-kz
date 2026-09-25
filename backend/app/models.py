@@ -52,6 +52,9 @@ class Product(Base):
     color: Mapped[str | None] = mapped_column(String(100))
     gender: Mapped[str | None] = mapped_column(String(10))  # men / women / unisex
     image_url: Mapped[str | None] = mapped_column(Text)
+    # Магазин, из которого взяты название/цвет/картинка: только он их и обновляет,
+    # чтобы исправления парсера доходили до базы, а название не «прыгало» между магазинами.
+    source_store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

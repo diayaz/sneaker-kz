@@ -56,6 +56,25 @@ BRAND_ALIASES = {
 }
 
 
+# Аббревиатуры, которые в названиях кроссовок пишутся заглавными.
+KEEP_UPPER = {
+    "OG", "SE", "SP", "QS", "PRM", "GTX", "NRG", "SB", "LX", "TR", "DX", "PE", "GS", "PS", "TD",
+    "CDG", "BAPE", "OW", "USA", "UK", "II", "III", "IV", "V2", "V3", "WMNS", "EQT", "NMD", "ADV", "FC",
+}
+
+
+def smart_title(text: str) -> str:
+    """«AIR JORDAN 1 LOW OG» → «Air Jordan 1 Low OG». Слова с цифрами («1906R», «AF1») не трогаем."""
+
+    def fix(word: str) -> str:
+        core = word.strip("\"'()[]/-.,")
+        if core.upper() in KEEP_UPPER or any(ch.isdigit() for ch in core):
+            return word.upper() if core.upper() in KEEP_UPPER else word
+        return word.capitalize() if word.isupper() or word.islower() else word
+
+    return re.sub(r"\S+", lambda m: "/".join(fix(w) for w in m.group(0).split("/")), text)
+
+
 def normalize_brand(vendor: str) -> str:
     v = re.sub(r"\s+", " ", vendor).strip()
     return BRAND_ALIASES.get(v.upper(), v.title() if v.isupper() else v)
@@ -200,7 +219,7 @@ class ShopifyScraper(BaseScraper, register=False):
         if idx is not None:
             values = p["options"][idx].get("values") or []
             if values:
-                return str(values[0]).strip().title()
+                return smart_title(str(values[0]).strip())
         return None
 
     def name(self, p: Product) -> str:

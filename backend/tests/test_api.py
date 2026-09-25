@@ -63,6 +63,33 @@ def test_list_hides_out_of_stock_and_picks_cheapest_store(client):
     assert r["items"][0]["style_code"] == "DD1391-100"  # popular: больше магазинов — выше
 
 
+def test_equal_price_tiebreak_by_sizes():
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(engine, expire_on_commit=False)
+    with Session() as s:
+        seed_settings(s)
+        a = ensure_store(s, StoreInfo("a", "Store A", "US", "USD", "https://a"))
+        b = ensure_store(s, StoreInfo("b", "Store B", "US", "USD", "https://b"))
+        now, today = datetime.now(UTC), date.today()
+        save_item(s, a, item("CW2288-111", "115", sizes=(("9", True),)), now, today)
+        save_item(s, b, item("CW2288-111", "115", sizes=(("9", True), ("10", True), ("11", True))), now, today)
+        s.commit()
+
+    def override():
+        with Session() as s:
+            yield s
+
+    app.dependency_overrides[get_session] = override
+    try:
+        c = TestClient(app)
+        card = c.get("/api/v1/products").json()["items"][0]
+        assert card["best_store"]["code"] == "b"
+        assert [o["store"]["code"] for o in c.get(f"/api/v1/products/{card['id']}").json()["offers"]] == ["b", "a"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_size_filter_uses_available_sizes_only(client):
     r = client.get("/api/v1/products", params={"size": "9"}).json()
     dunk = next(p for p in r["items"] if p["style_code"] == "DD1391-100")

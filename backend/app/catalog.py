@@ -104,7 +104,7 @@ def list_products(
     # Лучшее предложение для каждого товара — среди тех же, что прошли фильтр.
     offers = session.scalars(
         select(Offer)
-        .options(selectinload(Offer.store))
+        .options(selectinload(Offer.store), selectinload(Offer.sizes))
         .where(Offer.product_id.in_([p.id for p in products]), *offer_conds)
     ).all()
     by_product: dict[int, list[Offer]] = {}
@@ -114,7 +114,7 @@ def list_products(
     items = []
     for p in products:
         candidates = by_product[p.id]
-        best = min(candidates, key=lambda o: (calculate(o.price, o.store.default_sales_tax_pct, calc).total_kzt, o.id))
+        best = min(candidates, key=lambda o: (calculate(o.price, o.store.default_sales_tax_pct, calc).total_kzt, -_sizes_in_stock(o), o.id))
         items.append(
             {
                 **_product_fields(p),
@@ -155,7 +155,8 @@ def get_product(session: Session, product_id: int, calc: CalcSettings) -> dict |
                 "estimate": estimate.as_dict(),
             }
         )
-    offers.sort(key=lambda o: (not o["in_stock"], o["estimate"]["total_kzt"]))
+    # При равной цене выше тот магазин, где больше размеров в наличии.
+    offers.sort(key=lambda o: (not o["in_stock"], o["estimate"]["total_kzt"], -sum(s.available for s in o["sizes"])))
     return {**_product_fields(product), "offers": offers}
 
 
@@ -199,6 +200,10 @@ def filters(session: Session) -> dict:
         "price_min": lo,
         "price_max": hi,
     }
+
+
+def _sizes_in_stock(offer: Offer) -> int:
+    return sum(s.available for s in offer.sizes)
 
 
 def _product_fields(p: Product) -> dict:

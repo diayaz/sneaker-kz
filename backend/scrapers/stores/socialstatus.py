@@ -1,7 +1,7 @@
 import re
 
 from scrapers.base import StoreInfo
-from scrapers.shopify import Product, ShopifyScraper
+from scrapers.shopify import Product, ShopifyScraper, smart_title
 
 
 class SocialStatusScraper(ShopifyScraper):
@@ -17,7 +17,7 @@ class SocialStatusScraper(ShopifyScraper):
     def color(self, p: Product) -> str | None:
         # «NIKE AIR FORCE 1 "CRACKED LEATHER"» — в кавычках название расцветки
         m = re.search(r'"([^"]+)"', p.get("title") or "")
-        return m.group(1).title() if m else super().color(p)
+        return smart_title(m.group(1)) if m else super().color(p)
 
     def name(self, p: Product) -> str:
-        return (p.get("title") or "").replace('"', "").strip().title()
+        return smart_title((p.get("title") or "").replace('"', "").strip())

@@ -58,11 +58,19 @@ def save_item(session: Session, store: Store, item: ScrapedProduct, now: datetim
             color=item.color,
             gender=item.gender,
             image_url=item.image_url,
+            source_store_id=store.id,
         )
         session.add(product)
         session.flush()
+    elif product.source_store_id in (store.id, None):
+        # Магазин-источник обновляет описание товара целиком.
+        product.source_store_id = store.id
+        product.style_code, product.brand, product.name = item.style_code, item.brand, item.name
+        for attr in ("model", "color", "gender", "image_url"):
+            if getattr(item, attr) is not None:
+                setattr(product, attr, getattr(item, attr))
     else:
-        # Товар мог прийти из другого магазина — дополняем только пустые поля.
+        # Товар пришёл из другого магазина — только дополняем пустые поля.
         for attr in ("model", "color", "gender", "image_url"):
             if getattr(product, attr) is None and getattr(item, attr) is not None:
                 setattr(product, attr, getattr(item, attr))

@@ -26,11 +26,13 @@ def make_engine(url: str) -> Engine:
         Path(parsed.database).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url)
     if parsed.get_backend_name() == "sqlite":
-        event.listen(engine, "connect", _sqlite_enable_fk)
+        # На каждой выдаче из пула, а не только при создании: миграции временно выключают ключи
+        # на своём соединении, и оно не должно вернуться в работу без них.
+        event.listen(engine, "checkout", _sqlite_enable_fk)
     return engine
 
 
-def _sqlite_enable_fk(dbapi_conn, _record):
+def _sqlite_enable_fk(dbapi_conn, _record, _proxy=None):
     cur = dbapi_conn.cursor()
     cur.execute("PRAGMA foreign_keys=ON")
     cur.close()
