@@ -16,6 +16,7 @@ COMMIT_EVERY = 50
 # Если собрано меньше этой доли от прошлого успешного запуска, не помечаем пропавшие товары
 # как «нет в наличии»: скорее всего, парсер сломался, а не магазин опустел.
 MIN_SHARE_TO_MARK_MISSING = 0.5
+MIN_SHARED_KEY_LEN = 6
 
 
 def ensure_store(session: Session, info: StoreInfo) -> Store:
@@ -37,11 +38,20 @@ def _size_sort_key(size: str) -> float:
         return 0.0
 
 
+def match_key_for(store: Store, item: ScrapedProduct) -> str:
+    # Короткие коды («V03», «6604») легко совпадают у разных брендов — такие товары
+    # не сопоставляем между магазинами.
+    key = item.match_key
+    return key if len(key) >= MIN_SHARED_KEY_LEN else f"{store.code}:{key}"
+
+
 def save_item(session: Session, store: Store, item: ScrapedProduct, now: datetime, today: date) -> Offer:
-    product = session.scalar(select(Product).where(Product.style_code == item.style_code))
+    key = match_key_for(store, item)
+    product = session.scalar(select(Product).where(Product.match_key == key))
     if product is None:
         product = Product(
             style_code=item.style_code,
+            match_key=key,
             brand=item.brand,
             model=item.model,
             name=item.name,
@@ -143,6 +153,10 @@ def run_scraper(scraper_cls: type[BaseScraper], session_factory: Callable[[], Se
             run.marked_out_of_stock = _mark_missing_out_of_stock(session, store, run, started)
             run.status = "ok" if run.items_failed == 0 else "partial"
         finally:
+            # Ошибки разбора внутри парсера тоже считаем — иначе они не видны в журнале.
+            run.items_failed += getattr(scraper, "parse_errors", 0)
+            if run.status == "ok" and run.items_failed:
+                run.status = "partial"
             scraper.close()
 
         run.finished_at = datetime.now(UTC)

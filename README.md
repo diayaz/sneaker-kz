@@ -48,7 +48,24 @@ pytest
 По умолчанию SQLite в `backend/data/`. Для PostgreSQL задайте `DATABASE_URL` в `backend/.env`
 (см. `.env.example`).
 
+## Магазины
+
+Сейчас: Sneaker Politics, Social Status, Bodega, Shoe Palace (все на Shopify).
+New Balance, Adidas и Amazon закрыты защитой от ботов — подробности и план в [docs/sources.md](docs/sources.md).
+
+```bash
+python manage.py scrape                      # все магазины
+python manage.py scrape bodega_us            # один
+```
+
+Логи — в `backend/logs/scrape_<дата>.log`, итоги запусков — в таблице `scrape_runs` (`python manage.py stats`).
+
 ### Новый магазин
 
-Создайте `backend/scrapers/stores/<магазин>.py` с подклассом `BaseScraper`: задайте `store = StoreInfo(...)`
-и реализуйте `iter_products()`, отдающий `ScrapedProduct`. Всё остальное делает `pipeline.py`.
+- **На Shopify** — файл в `backend/scrapers/stores/` с подклассом `ShopifyScraper`: `store`, `domain`
+  и, если нужно, хуки `is_sneaker` / `gender` / `style_code` / `color` (примеры — соседние файлы).
+- **Любой другой** — подкласс `BaseScraper` с `store = StoreInfo(...)` и `iter_products()`,
+  отдающим `ScrapedProduct`. Сохранение, история цен и журнал — в `pipeline.py`.
+
+Товары сопоставляются по артикулу без разделителей (`IQ6573-100` = `iq6573 100`);
+артикулы короче 6 символов между магазинами не сопоставляются.

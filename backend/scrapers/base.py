@@ -43,11 +43,17 @@ class ScrapedProduct:
     store_product_id: str | None = None
 
     def __post_init__(self) -> None:
-        self.style_code = normalize_style_code(self.style_code)
+        self.style_code = clean_style_code(self.style_code)
+        if not self.match_key:
+            raise ValueError(f"пустой артикул у {self.name!r}")
         if self.in_stock is None:
             self.in_stock = any(s.available for s in self.sizes)
         if self.old_price is not None and self.old_price <= self.price:
             self.old_price = None
+
+    @property
+    def match_key(self) -> str:
+        return style_match_key(self.style_code)
 
 
 class BaseScraper(ABC):
@@ -72,8 +78,14 @@ class BaseScraper(ABC):
         pass
 
 
-def normalize_style_code(code: str) -> str:
-    return re.sub(r"[\s\-_]", "", code).upper()
+def clean_style_code(code: str) -> str:
+    """Артикул для показа: как в магазине, только без лишних пробелов и в верхнем регистре."""
+    return re.sub(r"\s+", " ", code).strip().upper()
+
+
+def style_match_key(code: str) -> str:
+    """Ключ сопоставления между магазинами: «IQ6573-100», «iq6573 100» → «IQ6573100»."""
+    return re.sub(r"[^0-9A-Za-z]", "", code).upper()
 
 
 def get_registry() -> dict[str, type[BaseScraper]]:

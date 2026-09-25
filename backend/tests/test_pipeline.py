@@ -42,12 +42,12 @@ def session_factory():
 
 
 def test_saves_products_offers_and_history(session_factory):
-    run = pipeline.run_scraper(fake_scraper("nb", [make_item("m990-gl6", "199.99", "219.99")]), session_factory)
+    run = pipeline.run_scraper(fake_scraper("nb", [make_item("iq6573-100 ", "199.99", "219.99")]), session_factory)
     assert (run.status, run.items_ok) == ("ok", 1)
 
     with session_factory() as s:
         product = s.scalar(select(Product))
-        assert product.style_code == "M990GL6"
+        assert (product.style_code, product.match_key) == ("IQ6573-100", "IQ6573100")
         offer = product.offers[0]
         assert offer.price == Decimal("199.99") and offer.old_price == Decimal("219.99")
         assert [(z.size, z.available) for z in offer.sizes] == [("9", True), ("10", False)]
@@ -56,11 +56,18 @@ def test_saves_products_offers_and_history(session_factory):
 
 
 def test_same_style_code_from_two_stores_is_one_product(session_factory):
-    pipeline.run_scraper(fake_scraper("a", [make_item("M990GL6", "199.99")]), session_factory)
-    pipeline.run_scraper(fake_scraper("b", [make_item("m990gl6", "189.00")]), session_factory)
+    pipeline.run_scraper(fake_scraper("a", [make_item("IQ6573-100", "199.99")]), session_factory)
+    pipeline.run_scraper(fake_scraper("b", [make_item("iq6573 100", "189.00")]), session_factory)
     with session_factory() as s:
         assert s.query(Product).count() == 1
         assert s.query(Offer).count() == 2
+
+
+def test_short_codes_not_matched_across_stores(session_factory):
+    pipeline.run_scraper(fake_scraper("a", [make_item("V03", "100")]), session_factory)
+    pipeline.run_scraper(fake_scraper("b", [make_item("V03", "100")]), session_factory)
+    with session_factory() as s:
+        assert sorted(s.scalars(select(Product.match_key))) == ["a:V03", "b:V03"]
 
 
 def test_rerun_same_day_updates_history_point(session_factory):

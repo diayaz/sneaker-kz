@@ -39,12 +39,13 @@ class Store(Base):
 
 
 class Product(Base):
-    """Модель в конкретной расцветке. Одинаковые товары из разных магазинов сводятся по style_code."""
+    """Модель в конкретной расцветке. Одинаковые товары из разных магазинов сводятся по match_key."""
 
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    style_code: Mapped[str] = mapped_column(String(50), unique=True)  # нормализованный: "M990GL6"
+    style_code: Mapped[str] = mapped_column(String(50))  # для показа, как в магазине: "IQ6573-100"
+    match_key: Mapped[str] = mapped_column(String(50), unique=True)  # для сопоставления: "IQ6573100"
     brand: Mapped[str] = mapped_column(String(50), index=True)
     model: Mapped[str | None] = mapped_column(String(100), index=True)  # "990v6"
     name: Mapped[str] = mapped_column(String(255))
