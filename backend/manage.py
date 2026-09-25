@@ -3,6 +3,8 @@
     python manage.py init-db            # миграции + настройки по умолчанию
     python manage.py scrapers           # список подключённых магазинов
     python manage.py scrape [код ...]   # запустить парсеры (все или указанные)
+    python manage.py rates              # обновить курсы USD/EUR с сайта Нацбанка РК
+    python manage.py daily              # ежедневная задача: курсы + все парсеры
     python manage.py stats              # что лежит в базе
 """
 
@@ -38,18 +40,57 @@ def cmd_scrapers(_args) -> None:
         print(f"{code:20} {cls.store.name} ({cls.store.country}, {cls.store.currency})")
 
 
-def cmd_scrape(args) -> None:
+def run_scrapers(codes: list[str]) -> bool:
+    """Запускает парсеры по очереди; True, если ни один не упал."""
     from scrapers.base import get_registry
     from scrapers.pipeline import run_scraper
 
-    setup_logging("scrape")
     registry = get_registry()
-    codes = args.stores or list(registry)
+    codes = codes or list(registry)
     unknown = set(codes) - set(registry)
     if unknown:
         sys.exit(f"Неизвестные магазины: {', '.join(sorted(unknown))}. Доступны: {', '.join(registry)}")
+    # Падение одного магазина не должно останавливать остальные — run_scraper ловит ошибки сам.
     runs = [run_scraper(registry[code], SessionLocal) for code in codes]
-    if any(r.status == "failed" for r in runs):
+    return not any(r.status == "failed" for r in runs)
+
+
+def run_rates() -> bool:
+    import logging
+
+    from app.rates import update_rates
+
+    try:
+        with SessionLocal() as session:
+            update_rates(session)
+        return True
+    except Exception:
+        logging.getLogger("rates").exception("Не удалось обновить курсы — остаются прежние")
+        return False
+
+
+def cmd_scrape(args) -> None:
+    setup_logging("scrape")
+    if not run_scrapers(args.stores):
+        sys.exit(1)
+
+
+def cmd_rates(_args) -> None:
+    setup_logging("rates")
+    if not run_rates():
+        sys.exit(1)
+
+
+def cmd_daily(_args) -> None:
+    import logging
+
+    setup_logging("daily")
+    log = logging.getLogger("daily")
+    log.info("=== ежедневный запуск ===")
+    rates_ok = run_rates()
+    scrapers_ok = run_scrapers([])
+    log.info("=== готово: курсы %s, парсеры %s ===", "ok" if rates_ok else "ОШИБКА", "ok" if scrapers_ok else "ОШИБКА")
+    if not (rates_ok and scrapers_ok):
         sys.exit(1)
 
 
@@ -77,6 +118,8 @@ def main() -> None:
     p = sub.add_parser("scrape")
     p.add_argument("stores", nargs="*")
     p.set_defaults(func=cmd_scrape)
+    sub.add_parser("rates").set_defaults(func=cmd_rates)
+    sub.add_parser("daily").set_defaults(func=cmd_daily)
     sub.add_parser("stats").set_defaults(func=cmd_stats)
     args = parser.parse_args()
     args.func(args)

@@ -60,6 +60,23 @@ python manage.py scrape bodega_us            # один
 
 Логи — в `backend/logs/scrape_<дата>.log`, итоги запусков — в таблице `scrape_runs` (`python manage.py stats`).
 
+## Ежедневное обновление
+
+`python manage.py daily` — курсы USD/EUR с RSS Нацбанка РК, затем все парсеры. Падение одного
+магазина или курсов не останавливает остальное, но команда вернёт код 1. Если курс за день
+изменился больше чем на 20%, он не применяется (защита от мусора в источнике).
+
+**Windows (локально):** `powershell -ExecutionPolicy Bypass -File scripts\register_task.ps1 [-Time 07:00]` —
+задача «SneakerKZ Daily» в Планировщике; если компьютер был выключен, запустится при включении.
+Удалить: `Unregister-ScheduledTask -TaskName "SneakerKZ Daily" -Confirm:$false`.
+
+**Linux-сервер (cron):**
+```
+0 7 * * * cd /srv/sneaker-kz/backend && .venv/bin/python manage.py daily >> logs/cron.log 2>&1
+```
+
+Лог каждого запуска — `backend/logs/daily_<дата>.log`.
+
 ### Новый магазин
 
 - **На Shopify** — файл в `backend/scrapers/stores/` с подклассом `ShopifyScraper`: `store`, `domain`
